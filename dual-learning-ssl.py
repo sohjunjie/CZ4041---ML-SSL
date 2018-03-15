@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def calculate_risk(real_x, reco_x, predict_correct, sigma):
-    raw_risk = np.linalg.norm(real_x - reco_x) / 2 * sigma * sigma
+    raw_risk = np.linalg.norm(real_x - reco_x) / (2 * sigma * sigma)
     if predict_correct:
         risk = np.exp(-raw_risk)
     else:
