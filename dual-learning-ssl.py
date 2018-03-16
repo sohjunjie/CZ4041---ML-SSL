@@ -73,12 +73,14 @@ if __name__ == "__main__":
     Id = np.identity(len(XTX))
     alpha_k = np.matmul(np.matmul(inv(XTX + gamma * Id), XT), y)
 
+    tra_dummy_x_unlabeled['risk'] = 999
+    tra_dummy_y_unlabeled[:] = 0
     for i in range(len(trs_dummy_x)):
 
-        Xrs = trs_dummy_x.as_matrix()[i]
-        yrs = trs_dummy_y.as_matrix()[i]
-        # Xrs = tra_dummy_x_unlabeled.as_matrix()[i]
-        # yrs = tra_dummy_y_unlabeled.as_matrix()[i]
+        # Xrs = trs_dummy_x.as_matrix()[i]
+        # yrs = trs_dummy_y.as_matrix()[i]
+        Xrs = tra_dummy_x_unlabeled.as_matrix()[i]
+        yrs = tra_dummy_y_unlabeled.as_matrix()[i]
 
         prediction = clf.predict(np.reshape(Xrs, (1, len(Xrs))))
         predicted_class = np.argmax(prediction[0])
@@ -91,16 +93,17 @@ if __name__ == "__main__":
         prediction_reco = clf.predict(np.reshape(reco_x, (1, len(Xrs))))
         predicted_class_reco = np.argmax(prediction_reco[0])
 
-        # yXreco should be == yXpredicted
+        # yXpredicted should be == yXreconstructed
         predict_correct = (predicted_class == predicted_class_reco)
-
-        if not predict_correct:
-            calc_risk = calculate_risk(real_x, reco_x, predict_correct, 0.05)
-            print("predicted class: " + str(predicted_class))
-            print("predicted reconstructed class: " + str(predicted_class_reco))
-            print("real class: " + str(np.argmax(yrs)))
-            print("Risk: " + str(calc_risk))
-            input("===============Enter to continue===============")
+        calc_risk = calculate_risk(real_x, reco_x, predict_correct, 0.05)
+        tra_dummy_x_unlabeled.loc[i]['risk'] = calc_risk
+        print("predicted class: " + str(predicted_class))
+        print("predicted reconstructed class: " + str(predicted_class_reco))
+        print("real class: " + str(np.argmax(yrs)))
+        print("Risk: " + str(calc_risk))
+        # set predicted class of unlabeled if calc_risk < threshold
+        tra_dummy_y_unlabeled.loc[i][y.columns[predicted_class]] = 1
+        input("===============Enter to continue===============")
 
 
 ######################################
