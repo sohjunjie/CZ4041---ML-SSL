@@ -1165,7 +1165,6 @@ usual,very_crit,foster,3,convenient,inconv,nonprob,not_recom,not_recom
 great_pret,very_crit,foster,more,convenient,convenient,slightly_prob,not_recom,not_recom
 pretentious,improper,completed,more,convenient,inconv,slightly_prob,priority,spec_prior
 usual,improper,incomplete,2,less_conv,inconv,slightly_prob,priority,priority
-usual,proper,complete,1,convenient,convenient,nonprob,recommended,recommend
 usual,very_crit,complete,2,convenient,convenient,nonprob,recommended,unlabeled
 usual,very_crit,foster,2,less_conv,convenient,problematic,priority,unlabeled
 great_pret,less_proper,complete,3,less_conv,inconv,slightly_prob,priority,unlabeled
