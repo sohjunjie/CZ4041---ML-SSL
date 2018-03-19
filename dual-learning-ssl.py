@@ -8,7 +8,7 @@ import pickle
 import math
 
 RESULT_DIR = "result"
-RISK_THRESHOLD = 0.75
+RISK_THRESHOLD = 0.71
 
 
 def calculate_risk(real_x, reco_x, predict_correct, sigma):
@@ -101,6 +101,12 @@ def label_unlabeled_training_dataset_for_ssl():
     num_ssl_classify_correct = 0
     num_ssl_rejected_wrong = 0
     num_ssl_rejected_correct = 0
+
+    ssl_safe_x = pd.DataFrame(columns=tra_dummy_x_unlabeled.columns)
+    ssl_safe_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
+    not_ssl_safe_x = pd.DataFrame(columns=tra_dummy_x_unlabeled.columns)
+    not_ssl_safe_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
+
     for i in tra_dummy_x_unlabeled.index:
 
         Xrs = tra_dummy_x_unlabeled.loc[i].as_matrix()
@@ -124,55 +130,71 @@ def label_unlabeled_training_dataset_for_ssl():
         real_class = np.argmax(yrs)
 
         # over risk threshold is considered unsafe for ssl training
+        # better to add these as supervised training if possible
         if calc_risk > RISK_THRESHOLD:
+            not_ssl_safe_x.loc[i] = tra_dummy_x_unlabeled.loc[i]
+            not_ssl_safe_y.loc[i] = tra_dummy_y_unlabeled_y.loc[i]
             if real_class == predicted_class:
                 num_ssl_rejected_wrong += 1
             if real_class != predicted_class:
                 num_ssl_rejected_correct += 1
 
-        # over risk threshold is considered safe for ssl training
+        # less than risk threshold is considered safe for ssl training
         if calc_risk < RISK_THRESHOLD:
+            ssl_safe_x.loc[i] = tra_dummy_x_unlabeled.loc[i]
+            one_hot_encoded = [0] * len(prediction_reco[0])
+            one_hot_encoded[predicted_class_reco] = 1
+            ssl_safe_y.loc[i] = one_hot_encoded
             if real_class == predicted_class:
                 num_ssl_classify_correct += 1
             if real_class != predicted_class:
                 num_ssl_classify_wrong += 1
-                # better to add these wrongly predicted classes as supervised training
-                # print("i: " + str(i))
-                # print("predicted class: " + str(predicted_class))
-                # print("predicted reconstructed class: " + str(predicted_class_reco))
-                # print("real class: " + str(real_class))
-                # print("Risk: " + str(calc_risk))
 
-    print("num classified wrong: " + str(num_ssl_classify_wrong))
-    print("num classified correct: " + str(num_ssl_classify_correct))
-    print("num instances incorrectly rejected: " + str(num_ssl_rejected_wrong))
-    print("num instances correctly rejected: " + str(num_ssl_rejected_correct))
+    print("num classified safe but actually unsafe: " + str(num_ssl_classify_wrong))
+    print("num classified safe and actually safe: " + str(num_ssl_classify_correct))
+    print("num classified unsafe but actually safe: " + str(num_ssl_rejected_wrong))
+    print("num classified unsafe and is really unsafe: " + str(num_ssl_rejected_correct))
 
-    merge_tra_dummy_y = pd.concat([tra_dummy_y_labeled, tra_dummy_y_unlabeled])
-    merge_tra_dummy_x = pd.concat([tra_dummy_x_labeled, tra_dummy_x_unlabeled])
+    merge_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_y])
+    merge_safe_x = pd.concat([tra_dummy_x_labeled, ssl_safe_x])
 
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-risked.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(merge_tra_dummy_x, f)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-risked.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(merge_tra_dummy_y, f)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle')
+    with open(data_path, 'wb') as f:
+        pickle.dump(merge_safe_y, f)
 
-    return merge_tra_dummy_x, merge_tra_dummy_y
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle')
+    with open(data_path, 'wb') as f:
+        pickle.dump(merge_safe_x, f)
+
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle')
+    with open(data_path, 'wb') as f:
+        pickle.dump(not_ssl_safe_y, f)
+
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle')
+    with open(data_path, 'wb') as f:
+        pickle.dump(not_ssl_safe_x, f)
+
+    return merge_safe_y, merge_safe_x, not_ssl_safe_y, not_ssl_safe_x
 
 
 if __name__ == "__main__":
 
     # check if labeling of unlabeled training dataset is done
-    labeled_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-risked.pickle'))
-    labeled_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-risked.pickle'))
+    safe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'))
+    safe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'))
+    unsafe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'))
+    unsafe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'))
 
-    if not (labeled_tra_x_exists and labeled_tra_y_exists):
-        tra_dummy_x, tra_dummy_y = label_unlabeled_training_dataset_for_ssl()
+    if not (safe_tra_y_exists and safe_tra_x_exists and unsafe_tra_y_exists and unsafe_tra_x_exists):
+        merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = label_unlabeled_training_dataset_for_ssl()
     else:
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-risked.pickle'), 'rb') as f:
-            tra_dummy_x = pickle.load(f)
+        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'), 'rb') as f:
+            merge_safe_y = pickle.load(f)
+        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'), 'rb') as f:
+            merge_safe_x = pickle.load(f)
+        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'), 'rb') as f:
+            unsafe_y = pickle.load(f)
+        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
+            unsafe_x = pickle.load(f)
 
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-risked.pickle'), 'rb') as f:
-            tra_dummy_y = pickle.load(f)
+    print(unsafe_x.describe())
