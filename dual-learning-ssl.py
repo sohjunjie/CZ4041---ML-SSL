@@ -22,7 +22,7 @@ def calculate_risk(real_x, reco_x, predict_correct, sigma):
     return risk
 
 
-def label_unlabeled_training_dataset_for_ssl():
+def generate_safe_unsafe_dataset_for_ssl():
 
     tra_csv = pd.read_csv('data/nursery-ssl10-10-1tra.csv')
     trs_csv = pd.read_csv('data/nursery-ssl10-10-1trs.csv')
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     unsafe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'))
 
     if not (safe_tra_y_exists and safe_tra_x_exists and unsafe_tra_y_exists and unsafe_tra_x_exists):
-        merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = label_unlabeled_training_dataset_for_ssl()
+        merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
     else:
         with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'), 'rb') as f:
             merge_safe_y = pickle.load(f)
@@ -197,4 +197,7 @@ if __name__ == "__main__":
         with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
             unsafe_x = pickle.load(f)
 
-    print(unsafe_x.describe())
+        merge_safe_y = pd.DataFrame(merge_safe_y, dtype='int')
+        merge_safe_x = pd.DataFrame(merge_safe_x, dtype='int')
+        unsafe_y = pd.DataFrame(unsafe_y, dtype='int')
+        unsafe_x = pd.DataFrame(unsafe_x, dtype='int')
