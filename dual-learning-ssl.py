@@ -107,6 +107,9 @@ def generate_safe_unsafe_dataset_for_ssl():
     not_ssl_safe_x = pd.DataFrame(columns=tra_dummy_x_unlabeled.columns)
     not_ssl_safe_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
 
+    unsafe_risk_series = []
+    safe_risk_series = []
+
     for i in tra_dummy_x_unlabeled.index:
 
         Xrs = tra_dummy_x_unlabeled.loc[i].as_matrix()
@@ -134,6 +137,7 @@ def generate_safe_unsafe_dataset_for_ssl():
         if calc_risk > RISK_THRESHOLD:
             not_ssl_safe_x.loc[i] = tra_dummy_x_unlabeled.loc[i]
             not_ssl_safe_y.loc[i] = tra_dummy_y_unlabeled_y.loc[i]
+            unsafe_risk_series.append(calc_risk)
             if real_class == predicted_class:
                 num_ssl_rejected_wrong += 1
             if real_class != predicted_class:
@@ -145,6 +149,7 @@ def generate_safe_unsafe_dataset_for_ssl():
             one_hot_encoded = [0] * len(prediction_reco[0])
             one_hot_encoded[predicted_class_reco] = 1
             ssl_safe_y.loc[i] = one_hot_encoded
+            safe_risk_series.append(calc_risk)
             if real_class == predicted_class:
                 num_ssl_classify_correct += 1
             if real_class != predicted_class:
@@ -154,6 +159,10 @@ def generate_safe_unsafe_dataset_for_ssl():
     print("num classified safe and actually safe: " + str(num_ssl_classify_correct))
     print("num classified unsafe but actually safe: " + str(num_ssl_rejected_wrong))
     print("num classified unsafe and is really unsafe: " + str(num_ssl_rejected_correct))
+
+    ssl_safe_x['risk'] = safe_risk_series
+    tra_dummy_x_labeled['risk'] = 0.0
+    not_ssl_safe_x['risk'] = unsafe_risk_series
 
     merge_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_y])
     merge_safe_x = pd.concat([tra_dummy_x_labeled, ssl_safe_x])
