@@ -8,7 +8,7 @@ import pickle
 import math
 
 RESULT_DIR = "result"
-RISK_THRESHOLD = 0.71
+RISK_THRESHOLD = 0.75
 
 
 def calculate_risk(real_x, reco_x, predict_correct, sigma):
