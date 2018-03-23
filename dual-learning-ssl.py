@@ -167,6 +167,16 @@ def generate_safe_unsafe_dataset_for_ssl():
     merge_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_y])
     merge_safe_x = pd.concat([tra_dummy_x_labeled, ssl_safe_x])
 
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.csv')
+    merge_safe_y.to_csv(path_or_buf=data_path, index=False)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.csv')
+    merge_safe_x.to_csv(path_or_buf=data_path, index=False)
+
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.csv')
+    not_ssl_safe_y.to_csv(path_or_buf=data_path, index=False)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.csv')
+    not_ssl_safe_x.to_csv(path_or_buf=data_path, index=False)
+
     data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle')
     with open(data_path, 'wb') as f:
         pickle.dump(merge_safe_y, f)
