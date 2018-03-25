@@ -216,7 +216,7 @@ if __name__ == "__main__":
         with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
             unsafe_x = pickle.load(f)
 
-        merge_safe_y = pd.DataFrame(merge_safe_y, dtype='int')
-        merge_safe_x = pd.DataFrame(merge_safe_x, dtype='int')
-        unsafe_y = pd.DataFrame(unsafe_y, dtype='int')
-        unsafe_x = pd.DataFrame(unsafe_x, dtype='int')
+        merge_safe_y = pd.DataFrame(merge_safe_y, dtype='float')
+        merge_safe_x = pd.DataFrame(merge_safe_x, dtype='float')
+        unsafe_y = pd.DataFrame(unsafe_y, dtype='float')
+        unsafe_x = pd.DataFrame(unsafe_x, dtype='float')
