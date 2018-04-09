@@ -110,6 +110,9 @@ def generate_safe_unsafe_dataset_for_ssl():
     unsafe_risk_series = []
     safe_risk_series = []
 
+    # ROC CURVE VARIABLES
+    roc_curve_list = []
+
     for i in tra_dummy_x_unlabeled.index:
 
         Xrs = tra_dummy_x_unlabeled.loc[i].as_matrix()
@@ -134,14 +137,14 @@ def generate_safe_unsafe_dataset_for_ssl():
 
         # over risk threshold is considered unsafe for ssl training
         # better to add these as supervised training if possible
-        if calc_risk > RISK_THRESHOLD:
+        if calc_risk >= RISK_THRESHOLD:
             not_ssl_safe_x.loc[i] = tra_dummy_x_unlabeled.loc[i]
             not_ssl_safe_y.loc[i] = tra_dummy_y_unlabeled_y.loc[i]
             unsafe_risk_series.append(calc_risk)
             if real_class == predicted_class:
-                num_ssl_rejected_wrong += 1
+                num_ssl_rejected_wrong += 1     # false negative
             if real_class != predicted_class:
-                num_ssl_rejected_correct += 1
+                num_ssl_rejected_correct += 1   # true negative
 
         # less than risk threshold is considered safe for ssl training
         if calc_risk < RISK_THRESHOLD:
@@ -151,9 +154,59 @@ def generate_safe_unsafe_dataset_for_ssl():
             ssl_safe_y.loc[i] = one_hot_encoded
             safe_risk_series.append(calc_risk)
             if real_class == predicted_class:
-                num_ssl_classify_correct += 1
+                num_ssl_classify_correct += 1   # true positive
             if real_class != predicted_class:
-                num_ssl_classify_wrong += 1
+                num_ssl_classify_wrong += 1     # false positive
+
+        # roc_y.append(1 if real_class == predicted_class else 0)
+        # roc_score.append(calc_risk)
+        roc_curve_list.append([calc_risk, 1 if real_class == predicted_class else 0])
+
+    print("calculating roc curve")
+    roc_threshold = []
+    roc_tpr = []
+    roc_fpr = []
+    plt_tp_div_fp = []
+    plt_tp = []
+    plt_fp = []
+
+    np_roc_curve_list = np.array(roc_curve_list)
+    np_roc_curve_list = np_roc_curve_list[np_roc_curve_list[:, 0].argsort()]
+    for i in range(len(np_roc_curve_list)):
+        t = np_roc_curve_list[i, 0]
+        tpr = np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 1)) / np.sum(np_roc_curve_list[:, 1] == 1)
+        fpr = np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 0)) / np.sum(np_roc_curve_list[:, 1] == 0)
+        roc_threshold.append(t)
+        roc_tpr.append(tpr)
+        roc_fpr.append(fpr)
+        tp_div_fp = np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 1)) / np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 0))
+        plt_tp.append(np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 1)))
+        plt_fp.append(np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 0)))
+        plt_tp_div_fp.append(tp_div_fp)
+
+    print("finished calculating roc curve. now plotting roc curve")
+
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import auc
+    roc_auc = auc(roc_fpr, roc_tpr)
+    plt.figure()
+    plt.plot(roc_tpr, roc_fpr, color='darkorange', lw=1, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic')
+    plt.legend(loc="lower right")
+    plt.show()
+
+    print("finished plotting roc curve. now analysing algorithm performance")
+
+    dual_ssl_stats = pd.DataFrame({
+        'tp': plt_tp,
+        'fp': plt_fp,
+        'tp_div_fp': plt_tp_div_fp,
+        'threshold': roc_threshold})
 
     print("num classified safe but actually unsafe: " + str(num_ssl_classify_wrong))
     print("num classified safe and actually safe: " + str(num_ssl_classify_correct))
@@ -166,6 +219,9 @@ def generate_safe_unsafe_dataset_for_ssl():
 
     merge_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_y])
     merge_safe_x = pd.concat([tra_dummy_x_labeled, ssl_safe_x])
+
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dual-ssl-stats.csv')
+    dual_ssl_stats.to_csv(path_or_buf=data_path, index=False)
 
     data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.csv')
     merge_safe_y.to_csv(path_or_buf=data_path, index=False)
