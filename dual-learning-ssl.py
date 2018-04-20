@@ -104,6 +104,8 @@ def generate_safe_unsafe_dataset_for_ssl():
 
     ssl_safe_x = pd.DataFrame(columns=tra_dummy_x_unlabeled.columns)
     ssl_safe_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
+    ssl_safe_unlabelled_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
+    ssl_safe_real_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
     not_ssl_safe_x = pd.DataFrame(columns=tra_dummy_x_unlabeled.columns)
     not_ssl_safe_y = pd.DataFrame(columns=tra_dummy_y_unlabeled_y.columns)
 
@@ -149,9 +151,17 @@ def generate_safe_unsafe_dataset_for_ssl():
         # less than risk threshold is considered safe for ssl training
         if calc_risk < RISK_THRESHOLD:
             ssl_safe_x.loc[i] = tra_dummy_x_unlabeled.loc[i]
+            # predicted class one hot encoded
             one_hot_encoded = [0] * len(prediction_reco[0])
             one_hot_encoded[predicted_class_reco] = 1
+            # real class one hot encoded
+            one_hot_encoded2 = [0] * len(prediction_reco[0])
+            one_hot_encoded2[real_class] = 1
+
             ssl_safe_y.loc[i] = one_hot_encoded
+            ssl_safe_unlabelled_y.loc[i] = [0, 0, 0, 0, 1, 0]
+            ssl_safe_real_y.loc[i] = one_hot_encoded2
+
             safe_risk_series.append(calc_risk)
             if real_class == predicted_class:
                 num_ssl_classify_correct += 1   # true positive
@@ -223,31 +233,50 @@ def generate_safe_unsafe_dataset_for_ssl():
     data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dual-ssl-stats.csv')
     dual_ssl_stats.to_csv(path_or_buf=data_path, index=False)
 
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.csv')
-    merge_safe_y.to_csv(path_or_buf=data_path, index=False)
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.csv')
-    merge_safe_x.to_csv(path_or_buf=data_path, index=False)
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.csv')
+    # merge_safe_y.to_csv(path_or_buf=data_path, index=False)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.csv')
+    # merge_safe_x.to_csv(path_or_buf=data_path, index=False)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.csv')
+    # not_ssl_safe_y.to_csv(path_or_buf=data_path, index=False)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.csv')
+    # not_ssl_safe_x.to_csv(path_or_buf=data_path, index=False)
 
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.csv')
-    not_ssl_safe_y.to_csv(path_or_buf=data_path, index=False)
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.csv')
-    not_ssl_safe_x.to_csv(path_or_buf=data_path, index=False)
+    # labelled training data + unlabelled training data that is safe
+    merge_unlabelled_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_unlabelled_y])
+    ssl_safe_unlabelled = pd.concat([merge_safe_x, merge_unlabelled_safe_y], axis=1)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-ssl-safe-unlabelled.csv')
+    ssl_safe_unlabelled.to_csv(path_or_buf=data_path, index=False)
 
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle')
-    with open(data_path, 'wb') as f:
-        pickle.dump(merge_safe_y, f)
+    # labelled training data + unlabelled training data with real y
+    merge_real_label_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_real_y])
+    ssl_safe_w_real_y = pd.concat([merge_safe_x, merge_real_label_safe_y], axis=1)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-ssl-safe-w-real-y.csv')
+    ssl_safe_w_real_y.to_csv(path_or_buf=data_path, index=False)
 
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle')
-    with open(data_path, 'wb') as f:
-        pickle.dump(merge_safe_x, f)
+    # labelled training data + unlabelled training labelled with RLS prediction
+    ssl_safe_w_prediction = pd.concat([merge_safe_x, merge_safe_y], axis=1)
+    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-ssl-safe.csv')
+    ssl_safe_w_prediction.to_csv(path_or_buf=data_path, index=False)
 
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle')
-    with open(data_path, 'wb') as f:
-        pickle.dump(not_ssl_safe_y, f)
-
-    data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle')
-    with open(data_path, 'wb') as f:
-        pickle.dump(not_ssl_safe_x, f)
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle')
+    # with open(data_path, 'wb') as f:
+    #     pickle.dump(merge_safe_y, f)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle')
+    # with open(data_path, 'wb') as f:
+    #     pickle.dump(merge_safe_x, f)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle')
+    # with open(data_path, 'wb') as f:
+    #     pickle.dump(not_ssl_safe_y, f)
+    #
+    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle')
+    # with open(data_path, 'wb') as f:
+    #     pickle.dump(not_ssl_safe_x, f)
 
     return merge_safe_y, merge_safe_x, not_ssl_safe_y, not_ssl_safe_x
 
