@@ -283,25 +283,27 @@ def generate_safe_unsafe_dataset_for_ssl():
 
 if __name__ == "__main__":
 
+    merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
+
     # check if labeling of unlabeled training dataset is done
-    safe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'))
-    safe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'))
-    unsafe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'))
-    unsafe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'))
-
-    if not (safe_tra_y_exists and safe_tra_x_exists and unsafe_tra_y_exists and unsafe_tra_x_exists):
-        merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
-    else:
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'), 'rb') as f:
-            merge_safe_y = pickle.load(f)
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'), 'rb') as f:
-            merge_safe_x = pickle.load(f)
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'), 'rb') as f:
-            unsafe_y = pickle.load(f)
-        with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
-            unsafe_x = pickle.load(f)
-
-        merge_safe_y = pd.DataFrame(merge_safe_y, dtype='float')
-        merge_safe_x = pd.DataFrame(merge_safe_x, dtype='float')
-        unsafe_y = pd.DataFrame(unsafe_y, dtype='float')
-        unsafe_x = pd.DataFrame(unsafe_x, dtype='float')
+    # safe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'))
+    # safe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'))
+    # unsafe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'))
+    # unsafe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'))
+    #
+    # if not (safe_tra_y_exists and safe_tra_x_exists and unsafe_tra_y_exists and unsafe_tra_x_exists):
+    #     merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
+    # else:
+    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'), 'rb') as f:
+    #         merge_safe_y = pickle.load(f)
+    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'), 'rb') as f:
+    #         merge_safe_x = pickle.load(f)
+    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'), 'rb') as f:
+    #         unsafe_y = pickle.load(f)
+    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
+    #         unsafe_x = pickle.load(f)
+    #
+    #     merge_safe_y = pd.DataFrame(merge_safe_y, dtype='float')
+    #     merge_safe_x = pd.DataFrame(merge_safe_x, dtype='float')
+    #     unsafe_y = pd.DataFrame(unsafe_y, dtype='float')
+    #     unsafe_x = pd.DataFrame(unsafe_x, dtype='float')
