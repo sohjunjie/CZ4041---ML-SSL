@@ -11,7 +11,9 @@ RESULT_DIR = "result"
 RISK_THRESHOLD = 0.75
 
 
+# EQUATION 4
 def calculate_risk(real_x, reco_x, predict_correct, sigma):
+    """ calculate risk of training instance """
     raw_risk = np.linalg.norm(real_x - reco_x) / (2 * sigma * sigma)
     if predict_correct:
         risk = np.exp(-raw_risk)
@@ -24,6 +26,7 @@ def calculate_risk(real_x, reco_x, predict_correct, sigma):
 
 def generate_safe_unsafe_dataset_for_ssl():
 
+    # STEP 0 - data preprocessing, dummy coding
     tra_csv = pd.read_csv('data/nursery-ssl10-10-1tra.csv')
     trs_csv = pd.read_csv('data/nursery-ssl10-10-1trs.csv')
     tst_csv = pd.read_csv('data/nursery-ssl10-10-1tst.csv')
@@ -60,42 +63,34 @@ def generate_safe_unsafe_dataset_for_ssl():
     del tra_dummy_y
     del tra_dummy_x
 
+    # STEP 1 - train primal classifier using Regularised Least Square
     y = tra_dummy_y_labeled.as_matrix()
     X = tra_dummy_x_labeled.as_matrix()
 
     print("Now fitting primal RLS classifier")
-    # PRIMAL FORM RLS
     clf = KernelRidge(alpha=0.05)
-    clf.fit(X, y)
+    clf.fit(X, y)       # EQUATION 1
 
     gamma = 0.05
     K = clf._get_kernel(X)
     Id = np.identity(len(X))
-
-    # Equation 4
     alpha_star = np.matmul(inv(K + gamma * (Id)), y)
 
+    # STEP 2 - train dual classifier using Collaborative Representation-based Classification
     print("Now training dual CRC classifier")
-    # DUAL FORM CRC
     XT = np.transpose(X)
     XTX = np.matmul(XT, X)
-
     Id = np.identity(len(XTX))
-    alpha_k = np.matmul(np.matmul(inv(XTX + gamma * Id), XT), y)
+    alpha_k = np.matmul(np.matmul(inv(XTX + gamma * Id), XT), y)    # EQUATION 2
 
-    # sigma values representing L2 norm distance of Xfeatures for each yClass
+    # STEP 3 - calculate sigma values representing L2 norm distance of Xfeatures for each yClass
     sigma_list = []
     for c in tra_dummy_y_labeled.columns:
+        # EQUATION 3
         sigma = np.linalg.norm(tra_dummy_x_labeled.loc[tra_dummy_x_labeled.index.isin(tra_dummy_y_labeled.loc[tra_dummy_y_labeled[c] == 1].index)].describe().loc['std', :].as_matrix())
         if math.isnan(sigma):
             sigma = np.linalg.norm(tra_dummy_x_labeled.describe().loc['std', :].as_matrix())
         sigma_list.append(sigma)
-    # sigma_list = []
-    # for c in trs_dummy_y.columns:
-    #     sigma = np.linalg.norm(trs_dummy_x.loc[trs_dummy_x.index.isin(trs_dummy_y.loc[trs_dummy_y[c] == 1].index)].describe().loc['std', :].as_matrix())
-    #     if math.isnan(sigma):
-    #         sigma = np.linalg.norm(trs_dummy_x.describe().loc['std', :].as_matrix())
-    #     sigma_list.append(sigma)
 
     num_ssl_classify_wrong = 0
     num_ssl_classify_correct = 0
@@ -115,6 +110,7 @@ def generate_safe_unsafe_dataset_for_ssl():
     # ROC CURVE VARIABLES
     roc_curve_list = []
 
+    # STEP 4 & 5 - calculate risk for each training instance and classify as SAFE or UNSAFE
     for i in tra_dummy_x_unlabeled.index:
 
         Xrs = tra_dummy_x_unlabeled.loc[i].as_matrix()
@@ -168,8 +164,6 @@ def generate_safe_unsafe_dataset_for_ssl():
             if real_class != predicted_class:
                 num_ssl_classify_wrong += 1     # false positive
 
-        # roc_y.append(1 if real_class == predicted_class else 0)
-        # roc_score.append(calc_risk)
         roc_curve_list.append([calc_risk, 1 if real_class == predicted_class else 0])
 
     print("calculating roc curve")
@@ -194,8 +188,9 @@ def generate_safe_unsafe_dataset_for_ssl():
         plt_fp.append(np.sum(np.multiply(np_roc_curve_list[:, 0] < t, np_roc_curve_list[:, 1] == 0)))
         plt_tp_div_fp.append(tp_div_fp)
 
+    # roc curve is not a good metric to evaluate our model as we will be discarding
+    # instances that are considered UNSAFE
     print("finished calculating roc curve. now plotting roc curve")
-
     import matplotlib.pyplot as plt
     from sklearn.metrics import auc
     roc_auc = auc(roc_fpr, roc_tpr)
@@ -233,18 +228,6 @@ def generate_safe_unsafe_dataset_for_ssl():
     data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dual-ssl-stats.csv')
     dual_ssl_stats.to_csv(path_or_buf=data_path, index=False)
 
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.csv')
-    # merge_safe_y.to_csv(path_or_buf=data_path, index=False)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.csv')
-    # merge_safe_x.to_csv(path_or_buf=data_path, index=False)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.csv')
-    # not_ssl_safe_y.to_csv(path_or_buf=data_path, index=False)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.csv')
-    # not_ssl_safe_x.to_csv(path_or_buf=data_path, index=False)
-
     # labelled training data + unlabelled training data that is safe
     merge_unlabelled_safe_y = pd.concat([tra_dummy_y_labeled, ssl_safe_unlabelled_y])
     ssl_safe_unlabelled = pd.concat([merge_safe_x, merge_unlabelled_safe_y], axis=1)
@@ -262,48 +245,10 @@ def generate_safe_unsafe_dataset_for_ssl():
     data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-ssl-safe.csv')
     ssl_safe_w_prediction.to_csv(path_or_buf=data_path, index=False)
 
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(merge_safe_y, f)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(merge_safe_x, f)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(not_ssl_safe_y, f)
-    #
-    # data_path = os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle')
-    # with open(data_path, 'wb') as f:
-    #     pickle.dump(not_ssl_safe_x, f)
-
     return merge_safe_y, merge_safe_x, not_ssl_safe_y, not_ssl_safe_x
 
 
 if __name__ == "__main__":
 
+    # start dual learning SSL analysis
     merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
-
-    # check if labeling of unlabeled training dataset is done
-    # safe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'))
-    # safe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'))
-    # unsafe_tra_y_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'))
-    # unsafe_tra_x_exists = os.path.exists(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'))
-    #
-    # if not (safe_tra_y_exists and safe_tra_x_exists and unsafe_tra_y_exists and unsafe_tra_x_exists):
-    #     merge_safe_y, merge_safe_x, unsafe_y, unsafe_x = generate_safe_unsafe_dataset_for_ssl()
-    # else:
-    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-safe.pickle'), 'rb') as f:
-    #         merge_safe_y = pickle.load(f)
-    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-safe.pickle'), 'rb') as f:
-    #         merge_safe_x = pickle.load(f)
-    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-y-ssl-unsafe.pickle'), 'rb') as f:
-    #         unsafe_y = pickle.load(f)
-    #     with open(os.path.join(os.getcwd(), RESULT_DIR, 'dataset-x-ssl-unsafe.pickle'), 'rb') as f:
-    #         unsafe_x = pickle.load(f)
-    #
-    #     merge_safe_y = pd.DataFrame(merge_safe_y, dtype='float')
-    #     merge_safe_x = pd.DataFrame(merge_safe_x, dtype='float')
-    #     unsafe_y = pd.DataFrame(unsafe_y, dtype='float')
-    #     unsafe_x = pd.DataFrame(unsafe_x, dtype='float')
